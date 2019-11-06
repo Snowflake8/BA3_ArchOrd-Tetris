@@ -63,7 +63,60 @@
 .equ X_LIMIT, 12
 .equ Y_LIMIT, 8
 
+; BEGIN:main
+main:
+	call clear_leds
+	addi a0,zero,3
+	addi a1,zero,3
+	call set_pixel
+	addi a0,zero,7
+	addi a1,zero,3
+	call set_pixel
+	call end
+; END:main
 
+; BEGIN:clear_leds
+clear_leds:					#Mets tout les leds a 0
+	stw zero,LEDS(zero)
+	addi t0,zero,4
+	stw zero,LEDS(t0)
+	addi t0,t0,4
+	stw zero,LEDS(t0)
+	ret
+; END:clear_leds
+
+; BEGIN:set_pixel
+set_pixel:
+	srli t0,a0,2			#which LED word we are interested in
+	slli t0,t0,2
+	ldw t6,LEDS(t0)
+
+	andi a0,a0,0b11			#mask
+	slli a0,a0,3			#mult by 8
+	add t1,a0,a1			#which bit interests us
+		
+	addi t2,zero,1			
+	sll t2,t2,t1			#one hot encodind of the led
+	or t6,t6,t2
+	
+	stw t6,LEDS(t0)
+	ret
+; END:set_pixel
+
+; BEGIN:wait
+wait:
+	addi t0, zero, 1
+	slli t0, t0, 20
+
+	loop : 	
+		addi t0, t0, -1
+		bne t0, zero, loop
+	ret
+; END:wait
+
+; BEGIN:end
+end:
+; END:end
 ;; TODO Insert your code here
 font_data:
   .word 0xFC  ; 0
@@ -320,3 +373,4 @@ DRAW_Ay:                        ; address of shape arrays, y_axis
   .word L_E_Y
   .word L_So_Y
   .word L_W_Y
+
