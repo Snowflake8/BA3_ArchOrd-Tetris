@@ -65,13 +65,38 @@
 
 ; BEGIN:main
 main:
-	call clear_leds
-	addi a0,zero,3
-	addi a1,zero,3
-	call set_pixel
+	#call clear_leds
+	#addi a0,zero,3
+	#addi a1,zero,3
+	#call set_pixel
+	#addi a0,zero,7
+	#addi a1,zero,3
+	#call set_pixel
+
 	addi a0,zero,7
 	addi a1,zero,3
-	call set_pixel
+	call in_gsa
+	add s0,zero,v0			#should be 0
+
+	addi a0,zero,12
+	addi a1,zero,3
+	call in_gsa
+	add s1,zero,v0			#should be 1
+
+	addi a0,zero,7
+	addi a1,zero,-1
+	call in_gsa
+	add s2,zero,v0			#should be 1
+
+	addi a0,zero,7
+	addi a1,zero,3
+	addi a2,zero, FALLING
+	call set_gsa
+
+	addi a0,zero,7
+	addi a1,zero,3
+	call get_gsa
+	add s3,zero,v0			#should de 2
 	call end
 ; END:main
 
@@ -82,6 +107,7 @@ clear_leds:					#Mets tout les leds a 0
 	stw zero,LEDS(t0)
 	addi t0,t0,4
 	stw zero,LEDS(t0)
+
 	ret
 ; END:clear_leds
 
@@ -99,7 +125,8 @@ set_pixel:
 	sll t2,t2,t1			#one hot encodind of the led
 	or t6,t6,t2
 	
-	stw t6,LEDS(t0)
+	stw t6,LEDS(t0)	
+
 	ret
 ; END:set_pixel
 
@@ -108,11 +135,48 @@ wait:
 	addi t0, zero, 1
 	slli t0, t0, 20
 
-	loop : 	
+	wait_loop : 				#loop for 0.2s
 		addi t0, t0, -1
-		bne t0, zero, loop
+		bne t0, zero, wait_loop
+
 	ret
 ; END:wait
+
+; BEGIN:in_gas
+in_gsa:
+	cmplti t0, a0,0				#x-coord has to be 0 <= x(a0) <= 11
+	cmpgei t1,a0,12
+	or v0,t1,t0
+
+	cmplti t0,a1,0				#y-coord has to be 0 <= y(a0) <= 7
+	cmpgei t1,a1,8
+	or v0,v0,t0
+	or v0,v0,t1				#return 1 if this is not respected
+
+	ret							
+; END:in_gsa
+
+; BEGIN:get_gas
+get_gsa:
+	slli a0,a0,3				#get the correct value
+	add a0,a0,a1
+
+	slli a0,a0,2				#retrieve from memory
+	ldw v0,GSA(a0)	
+			
+	ret
+; END:get_gsa
+
+; BEGIN:set_gas
+set_gsa:
+	slli a0,a0,3				#get the correct value
+	add a0,a0,a1
+
+	slli a0,a0,2				#set to memory
+	stw a2,GSA(a0)
+	
+	ret
+; END:set_gsa
 
 ; BEGIN:end
 end:
