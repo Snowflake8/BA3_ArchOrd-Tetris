@@ -65,13 +65,16 @@
 
 ; BEGIN:main
 main:
-	#call clear_leds
-	#addi a0,zero,3
-	#addi a1,zero,3
-	#call set_pixel
-	#addi a0,zero,7
-	#addi a1,zero,3
-	#call set_pixel
+
+	addi sp,zero,SP_START		#NOT SURE HOW TO DO THIS
+
+	call clear_leds
+	addi a0,zero,3
+	addi a1,zero,3
+	call set_pixel
+	addi a0,zero,7
+	addi a1,zero,3
+	call set_pixel
 
 	addi a0,zero,7
 	addi a1,zero,3
@@ -88,8 +91,8 @@ main:
 	call in_gsa
 	add s2,zero,v0			#should be 1
 
-	addi a0,zero,7
-	addi a1,zero,3
+	addi a0,zero,2
+	addi a1,zero,2
 	addi a2,zero, FALLING
 	call set_gsa
 
@@ -97,7 +100,27 @@ main:
 	addi a1,zero,3
 	call get_gsa
 	add s3,zero,v0			#should de 2
-	call end
+
+	addi a0,zero,5
+	addi a1,zero,5
+	addi a2,zero, FALLING
+	call set_gsa
+
+	addi t0,zero,S
+	addi t1,zero,N
+	addi t2,zero,8
+	addi t3,zero,5
+	stw t0,T_type(zero)
+	stw t1,T_orientation(zero)
+	stw t2,T_X(zero)
+	stw t3,T_Y(zero)
+
+	addi a0,zero,FALLING
+	call draw_tetromino
+	
+
+	call draw_gsa	
+	jmpi end
 ; END:main
 
 ; BEGIN:clear_leds
@@ -135,7 +158,7 @@ wait:
 	addi t0, zero, 1
 	slli t0, t0, 20
 
-	wait_loop : 				#loop for 0.2s
+	wait_loop : 			#loop for 0.2s
 		addi t0, t0, -1
 		bne t0, zero, wait_loop
 
@@ -144,12 +167,12 @@ wait:
 
 ; BEGIN:in_gas
 in_gsa:
-	cmplti t0, a0,0				#x-coord has to be 0 <= x(a0) <= 11
-	cmpgei t1,a0,12
+	cmplti t0, a0,0			#x-coord has to be 0 <= x(a0) <= 11
+	cmpgei t1,a0,X_LIMIT
 	or v0,t1,t0
 
-	cmplti t0,a1,0				#y-coord has to be 0 <= y(a0) <= 7
-	cmpgei t1,a1,8
+	cmplti t0,a1,0			#y-coord has to be 0 <= y(a0) <= 7
+	cmpgei t1,a1,Y_LIMIT
 	or v0,v0,t0
 	or v0,v0,t1				#return 1 if this is not respected
 
@@ -158,10 +181,10 @@ in_gsa:
 
 ; BEGIN:get_gas
 get_gsa:
-	slli a0,a0,3				#get the correct value
+	slli a0,a0,3			#get the correct value
 	add a0,a0,a1
 
-	slli a0,a0,2				#retrieve from memory
+	slli a0,a0,2			#retrieve from memory
 	ldw v0,GSA(a0)	
 			
 	ret
@@ -169,19 +192,132 @@ get_gsa:
 
 ; BEGIN:set_gas
 set_gsa:
-	slli a0,a0,3				#get the correct value
+	slli a0,a0,3			#get the correct value
 	add a0,a0,a1
 
-	slli a0,a0,2				#set to memory
+	slli a0,a0,2			#set to memory
 	stw a2,GSA(a0)
 	
 	ret
 ; END:set_gsa
 
+; BEGIN:helper
+.equ SP_START,0x11FC
+push:
+	addi sp,sp,4
+	stw a0,0(sp)
+	ret
+pop:
+    ldw v0,0(sp)
+	addi sp,sp,-4
+	ret
+; END:helper
+
+; BEGIN:draw_gsa
+draw_gsa:
+	add a0,zero,ra			#stack ra,s0,s1
+	call push
+	add a0,zero,s0
+	call push
+	add a0,zero,s1
+	call push
+
+	call clear_leds			#put all leds to 0		
+	addi s0,zero,0			#put x to 0 
+
+	draw_x_loop:
+		addi s1,zero,0		#put y to 0 
+	
+		draw_y_loop:
+
+			add a0,zero,s0		#get the gsa
+			add a1,zero,s1
+			call get_gsa
+			add v1,zero,v0
+					
+			beq v1,zero,pixel_is_unlit
+				
+				add a0,zero,s0		#light the pixel
+				add a1,zero,s1
+				call set_pixel
+
+			pixel_is_unlit:
+			addi t7,zero,Y_LIMIT
+			addi s1,s1,1
+			blt s1,t7,draw_y_loop	#iterate over all y
+
+		addi t6,zero,X_LIMIT
+		addi s0,s0,1
+		blt s0,t6,draw_x_loop	#iterate over all x
+
+	call pop				#destack ra,s0,s1
+	add s1,zero,v0
+	call pop
+	add s0,zero,v0
+	call pop
+	add ra,zero,v0
+
+	ret
+; END:draw_gsa
+
+; BEGIN:draw_tetromino
+draw_tetromino:
+	add a2, zero,a0				#a2 is the arg for set_gsa
+
+	add a0,zero,ra				#stack the values used
+	call push
+	add a0,zero,s0
+	call push
+	add a0,zero,s1
+	call push
+	
+	ldw a0,T_X(zero)			#set the achor in gsa the anchor correctly
+	ldw a1,T_Y(zero)
+	call set_gsa
+
+	ldw t0,T_type(zero)			#create the base address
+	slli t0,t0,2				#ech type is four differebt directions
+	ldw t1,T_orientation(zero)		
+	add s1,t0,t1
+	slli s1,s1,2				#word aligned
+	ldw s1,DRAW_Ax(s1)			#s1 is the base adress,that is the adress where the first X non-anchor offset is stored
+								#draw_Ax stores adresses and not values
+	
+	addi s0,zero,0
+	draw_tetromino_loop:
+		slli t0,s0,2				#word aligned
+		addi t1,t0,0xC				#0xC further for y(first the 3 X then the 3 Y)
+		add t1,t1,s1				#create the exact adresses
+		add t0,t0,s1
+
+		ldw	t0,0(t0)				#load the offsets
+		ldw	t1,0(t1)
+
+		ldw a0,T_X(zero)			#calculate x and y by adding the offsets
+		ldw a1,T_Y(zero)
+		add a0,a0,t0
+		add a1,a1,t1
+			
+		call set_gsa
+
+		addi s0,s0,1
+		addi t7,zero,3
+		bne s0,t7,draw_tetromino_loop 	#iterate over the 3 non-achor points
+	
+	call pop				#desatck
+	add s1,zero,v0
+	call pop
+	add s0,zero,v0
+	call pop
+	add ra,zero,v0
+	ret
+; END:draw_tetromino
+
 ; BEGIN:end
 end:
+	break
 ; END:end
-;; TODO Insert your code here
+
 font_data:
   .word 0xFC  ; 0
   .word 0x60  ; 1
