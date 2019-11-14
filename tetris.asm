@@ -165,7 +165,7 @@ wait:
 	ret
 ; END:wait
 
-; BEGIN:in_gas
+; BEGIN:in_gsa
 in_gsa:
 	cmplti t0, a0,0			#x-coord has to be 0 <= x(a0) <= 11
 	cmpgei t1,a0,X_LIMIT
@@ -179,7 +179,7 @@ in_gsa:
 	ret							
 ; END:in_gsa
 
-; BEGIN:get_gas
+; BEGIN:get_gsa
 get_gsa:
 	slli a0,a0,3			#get the correct value
 	add a0,a0,a1
@@ -190,7 +190,7 @@ get_gsa:
 	ret
 ; END:get_gsa
 
-; BEGIN:set_gas
+; BEGIN:set_gsa
 set_gsa:
 	slli a0,a0,3			#get the correct value
 	add a0,a0,a1
@@ -276,7 +276,7 @@ draw_tetromino:
 	call set_gsa
 
 	ldw t0,T_type(zero)			#create the base address
-	slli t0,t0,2				#ech type is four differebt directions
+	slli t0,t0,2				#each type is four different directions
 	ldw t1,T_orientation(zero)		
 	add s1,t0,t1
 	slli s1,s1,2				#word aligned
@@ -302,7 +302,7 @@ draw_tetromino:
 
 		addi s0,s0,1
 		addi t7,zero,3
-		bne s0,t7,draw_tetromino_loop 	#iterate over the 3 non-achor points
+		bne s0,t7,draw_tetromino_loop 	#iterate over the 3 non-anchor points
 	
 	call pop				#desatck
 	add s1,zero,v0
