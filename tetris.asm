@@ -63,6 +63,11 @@
 .equ X_LIMIT, 12
 .equ Y_LIMIT, 8
 
+
+; BEGIN:helper
+.equ SP_START,0x11FC
+; END:helper
+
 ; BEGIN:main
 main:
 
@@ -167,11 +172,11 @@ wait:
 
 ; BEGIN:in_gsa
 in_gsa:
-	cmplti t0, a0,0			#x-coord has to be 0 <= x(a0) <= 11
+	cmplti t0, a0,0			#x-coord has to be 0 <= x (= a0) <= 11
 	cmpgei t1,a0,X_LIMIT
 	or v0,t1,t0
 
-	cmplti t0,a1,0			#y-coord has to be 0 <= y(a0) <= 7
+	cmplti t0,a1,0			#y-coord has to be 0 <= y (= a0) <= 7
 	cmpgei t1,a1,Y_LIMIT
 	or v0,v0,t0
 	or v0,v0,t1				#return 1 if this is not respected
@@ -201,26 +206,12 @@ set_gsa:
 	ret
 ; END:set_gsa
 
-; BEGIN:helper
-.equ SP_START,0x11FC
-push:
-	addi sp,sp,4
-	stw a0,0(sp)
-	ret
-pop:
-    ldw v0,0(sp)
-	addi sp,sp,-4
-	ret
-; END:helper
-
 ; BEGIN:draw_gsa
 draw_gsa:
-	add a0,zero,ra			#stack ra,s0,s1
-	call push
-	add a0,zero,s0
-	call push
-	add a0,zero,s1
-	call push
+	addi sp,sp,12			#stack ra,s0,s1
+	stw ra,-8(sp)
+	stw s0,-4(sp)
+	stw s1,0(sp)
 
 	call clear_leds			#put all leds to 0		
 	addi s0,zero,0			#put x to 0 
@@ -250,28 +241,24 @@ draw_gsa:
 		addi s0,s0,1
 		blt s0,t6,draw_x_loop	#iterate over all x
 
-	call pop				#destack ra,s0,s1
-	add s1,zero,v0
-	call pop
-	add s0,zero,v0
-	call pop
-	add ra,zero,v0
+	ldw s1,	0(sp)			#desatck
+	ldw s0,-4(sp)
+	ldw ra,-8(sp)
+	addi sp,sp,-12	
 
 	ret
 ; END:draw_gsa
 
 ; BEGIN:draw_tetromino
 draw_tetromino:
-	add a2, zero,a0				#a2 is the arg for set_gsa
+	addi sp,sp,12			#stack ra,s0,s1
+	stw ra,-8(sp)
+	stw s0,-4(sp)
+	stw s1,0(sp)
 
-	add a0,zero,ra				#stack the values used
-	call push
-	add a0,zero,s0
-	call push
-	add a0,zero,s1
-	call push
+	add a2, zero,a0				#a2 is the arg for set_gsa
 	
-	ldw a0,T_X(zero)			#set the achor in gsa the anchor correctly
+	ldw a0,T_X(zero)			#set the anchor in gsa correctly
 	ldw a1,T_Y(zero)
 	call set_gsa
 
@@ -302,16 +289,34 @@ draw_tetromino:
 
 		addi s0,s0,1
 		addi t7,zero,3
-		bne s0,t7,draw_tetromino_loop 	#iterate over the 3 non-anchor points
-	
-	call pop				#desatck
-	add s1,zero,v0
-	call pop
-	add s0,zero,v0
-	call pop
-	add ra,zero,v0
-	ret
+
+		bne s0,t7,draw_tetromino_loop 	#iterate over the 3 non-achor points
+		
+		ldw s1,	0(sp)			#destack
+		ldw s0,-4(sp)
+		ldw ra,-8(sp)
+		addi sp,sp,-12	
+
+		ret
 ; END:draw_tetromino
+
+
+; BEGIN:generate_tetromino
+generate_tetromino:
+	ldw t0,RANDOM_NUM(zero)			#read the random int
+	andi t0,t0,0b111				#take its last 3 bits
+	cmplti t1,t0,5					
+	beq t1,zero,generate_tetromino	#try again if its more or equal to 5
+	
+	stw t0,T_type(zero)				#store all the values
+	stw zero,T_orientation(zero)	#N is zero
+	addi t0,zero,START_X
+	stw t0,T_X(zero)
+	addi t0,zero,START_Y
+	stw t0,T_Y(zero)
+
+	ret
+; END:generate_tetromino
 
 ; BEGIN:end
 end:
