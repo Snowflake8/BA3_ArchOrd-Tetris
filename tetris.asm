@@ -161,7 +161,7 @@ set_pixel:
 ; BEGIN:wait
 wait:
 	addi t0, zero, 1
-	slli t0, t0, 20
+	slli t0, t0, 19
 
 	wait_loop : 			#loop for 0.2s
 		addi t0, t0, -1
@@ -292,12 +292,12 @@ draw_tetromino:
 
 		bne s0,t7,draw_tetromino_loop 	#iterate over the 3 non-achor points
 		
-		ldw s1,	0(sp)			#destack
-		ldw s0,-4(sp)
-		ldw ra,-8(sp)
-		addi sp,sp,-12	
+	ldw s1,	0(sp)			#destack
+	ldw s0,-4(sp)
+	ldw ra,-8(sp)
+	addi sp,sp,-12	
 
-		ret
+	ret
 ; END:draw_tetromino
 
 
@@ -317,6 +317,218 @@ generate_tetromino:
 
 	ret
 ; END:generate_tetromino
+
+
+; BEGIN:detect_collision
+detect_collision:
+	ret
+; END:detect_collision
+
+
+; BEGIN:rotate_tetromino
+rotate_tetromino:						#select the direction
+	addi t0,zero,rotL
+	beq a0,t0,rotate_isRotL
+rotate_isRotR:
+	addi t7,zero,1						#rotR is direction 1
+	jmpi rotate_start
+rotate_isRotL:
+	addi t7,zero,-1						#rotR is direction -1
+
+rotate_start:
+	ldw t0,T_orientation(zero)			#change the orientation
+	add t0,t0,t7
+	andi t0,t0,0b11
+	stw t0,T_orientation(zero)
+
+	ret
+; END:rotate_tetromino
+
+; BEGIN:helper
+towards_center:
+	addi t0,zero,6
+	bge a0,t0,center_negative
+	addi v0,zero,1
+	ret
+center_negative:
+	addi v0,zero,-1
+	ret
+; END:helper
+
+; BEGIN:act
+act:
+	addi sp,sp,8			#stack ra,s0,s1
+	stw ra,-4(sp)
+	stw s0,0(sp)
+
+	add s0,zero,a0			#our argument
+
+	addi t0,zero,moveL		#do different things depending on input
+	beq a0,t0,act_moveL
+	addi t0,zero,moveR
+	beq a0,t0,act_moveR
+	addi t0,zero,moveD
+	beq a0,t0,act_moveD
+
+	addi t0,zero,rotL
+	beq a0,t0,act_rot
+	addi t0,zero,rotR
+	beq a0,t0,act_rot
+
+act_reset:
+	call reset_game		
+	jmpi act_end
+
+act_moveL:
+	add a0,zero,s0
+	call detect_collision
+	bne v0,s0,act_fail			#if collision we do nothing to t_x
+
+	ldw t0,T_X(zero)			#else -1 to t_x
+	addi t0,t0,-1
+	stw t0,T_X(zero)
+
+	addi v0,zero,0
+	jmpi act_end
+
+act_moveR:
+	add a0,zero,s0
+	call detect_collision
+	bne v0,s0,act_fail			#if collision we do nothing to t_x
+
+	ldw t0,T_X(zero)			#else +1 to t_x
+	addi t0,t0,1
+	stw t0,T_X(zero)
+
+	addi v0,zero,0
+	jmpi act_end
+
+act_moveD:	
+	add a0,zero,s0
+	call detect_collision
+	bne v0,s0,act_fail			#if collision we do nothing to t_y
+
+	ldw t0,T_Y(zero)			#else +1 to t_y
+	addi t0,t0,1
+	stw t0,T_Y(zero)
+
+	addi v0,zero,0
+	jmpi act_end
+
+act_rot:
+	#stack gsa and all
+	
+	addi sp,sp,16			#stack x,y and orientation
+	stw s1,-12(sp)
+	ldw t0,T_X(zero)
+	stw t0,-8(sp)
+	ldw t0,T_Y(zero)
+	stw t0,-4(sp)
+	ldw t0,T_orientation(zero)
+	stw t0,0(sp)
+
+	add a0,zero,s0
+	call rotate_tetromino
+	
+	addi s1,zero,0
+
+	addi a0,zero,OVERLAP
+	call detect_collision
+
+	addi t0,zero,OVERLAP
+	beq t0,v0,act_rot_loop
+	addi sp,sp,-16			#directly sucessful
+	addi v0,zero,0
+	jmpi act_end
+		
+	act_rot_loop:
+
+		addi s1,zero,1
+		addi t0,zero,3
+		beq s1,t0,act_rot_end_fail
+		ldw a0,T_X(zero)
+		call towards_center
+		ldw t0,T_X(zero)
+		add t0,v0,t0
+		stw t0,T_X(zero)	
+
+		addi a0,zero,OVERLAP
+		call detect_collision		
+
+		addi t0,zero,OVERLAP
+		beq t0,v0,act_rot_loop
+	
+	addi sp,sp,-16			#sucessful within 2 towards center
+	addi v0,zero,0
+	jmpi act_end
+act_rot_end_fail:
+	addi sp,sp,-16			#destack ra,s0,s1
+
+	ldw t0,16(sp)
+	stw t0,T_orientation(zero)
+	ldw t0,12(sp)
+	stw t0,T_Y(zero)
+	ldw t0,8(sp)
+	stw t0,T_X(zero)
+	ldw s1,4(zero)
+	#destack gsa and all
+act_fail:
+	addi v0,zero,1
+act_end:
+	ldw s0,0(sp)			#destack
+	ldw ra,-4(sp)
+	addi sp,sp,-8
+	ret
+; END:act
+
+
+; BEGIN:helper
+clear_gsa:
+	addi sp,sp,12			#stack ra,s0,s1
+	stw ra,-8(sp)
+	stw s0,-4(sp)
+	stw s1,0(sp)
+
+	addi s0,zero,0			#put x to 0 
+
+	clear_gsa_x_loop:
+
+		addi s1,zero,0		#put y to 0 	
+		clear_gsa_y_loop:
+			add a0,zero,s0		#light the pixel
+			add a1,zero,s1
+			addi a2,zero,NOTHING
+			call set_pixel
+
+			addi t7,zero,Y_LIMIT
+			addi s1,s1,1
+			blt s1,t7,clear_gsa_y_loop	#iterate over all y
+
+		addi t6,zero,X_LIMIT
+		addi s0,s0,1
+		blt s0,t6,clear_gsa_x_loop	#iterate over all x
+
+	ldw s1,	0(sp)			#destack
+	ldw s0,-4(sp)
+	ldw ra,-8(sp)
+	addi sp,sp,-12
+	ret
+; END:helper
+
+; BEGIN:reset_game
+reset_game:#TODO put score to 0
+	addi sp,sp,4			#stack ra,s0,s1
+	stw ra,0(sp)
+	call clear_gsa
+	
+	call generate_tetromino
+	call draw_tetromino
+	call draw_gsa
+	ldw ra,0(sp)
+	addi sp,sp,-4			#stack ra,s0,s1
+	ret
+; END:reset_game
+
 
 ; BEGIN:end
 end:
