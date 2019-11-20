@@ -75,71 +75,31 @@ main:
 	
 	call clear_leds
 
+	#addi a0, zero, 6
+	#addi a1, zero, 3
+	#addi a2, zero, PLACED
+	#call set_gsa
+
 
 	call generate_tetromino
 	addi a0, zero, FALLING
+	addi t0, zero, B
+	stw t0, T_type(zero)
+
 	call draw_tetromino
 	call draw_gsa
 
 
-	#addi a0, zero, W_COL
-	#call detect_collision
-	#add s0, zero, v0
-
-	#addi a0, zero, E_COL
-	#call detect_collision
-	#add s1, zero, v0
-
-	#addi a0, zero, So_COL
-	#call detect_collision
-#	add s2, zero, v0
-
-	#addi a0, zero, OVERLAP
-	#call detect_collision
-#	add s3, zero, v0
-
-	
-	addi a0, zero, 4
-	addi a1, zero, 1
-	addi a2, zero, PLACED
-	call set_gsa
-	
-	addi a0, zero, 6
-	addi a1, zero, 2
-	addi a2, zero, PLACED
-	call set_gsa
-	
-	addi a0, zero, 7
-	addi a1, zero, 1
-	addi a2, zero, PLACED
-	call set_gsa
-	
-
-	addi a0, zero, W_COL
-	call detect_collision
-	add s4, zero, v0
-
-	addi a0, zero, E_COL
-	call detect_collision
-	add s5, zero, v0
-
-	addi a0, zero, So_COL
-	call detect_collision
-	add s6, zero, v0
+	addi a0, zero, NOTHING
+	call draw_tetromino
 
 
+	addi a0, zero, moveD
+	call act
 
 
-	addi a0, zero, 6
-	addi a1, zero, 0
-	addi a2, zero, PLACED
-	call set_gsa
-
-	addi a0, zero, OVERLAP
-	call detect_collision
-	add s7, zero, v0
-
-
+	addi a0, zero, FALLING
+	call draw_tetromino
 
 	
 
@@ -180,7 +140,7 @@ set_pixel:
 ; BEGIN:wait
 wait:
 	addi t0, zero, 1
-	slli t0, t0, 19
+	slli t0, t0, 20
 
 	wait_loop : 			#loop for 0.2s
 		addi t0, t0, -1
@@ -387,6 +347,27 @@ detect_collision:
 		slli s3, s3, 2							# word aligned
 		ldw s3, DRAW_Ax(s3)
 
+		# ------
+		ldw s0, T_X(zero)
+		ldw s1, T_Y(zero)
+		add s0, s0, s5
+		add s1, s1, s6
+
+		# check if the simulated anchor is still in the grid
+		add a0, zero, s0
+		add a1, zero, s1
+		call in_gsa
+		bne v0, zero, detect_collision_colliding
+
+		# check if the simulated anchor doesn't collide with another
+		add a0, zero, s0
+		add a1, zero, s1
+		call get_gsa
+
+		addi t0, zero, PLACED
+		beq v0, t0, detect_collision_colliding		# error if colliding with terrain
+
+		# ------
 
 		add s4, zero, zero						# counter (to loop over 4 parts of the piece)
 		detect_collision_loop:
@@ -634,7 +615,7 @@ clear_gsa:
 			add a0,zero,s0		#all gsa is NOTHING
 			add a1,zero,s1
 			addi a2,zero,NOTHING
-			call set_pixel
+			call set_gsa
 
 			addi t7,zero,Y_LIMIT
 			addi s1,s1,1
