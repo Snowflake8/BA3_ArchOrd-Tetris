@@ -321,7 +321,7 @@ generate_tetromino:
 ; BEGIN:detect_collision
 detect_collision:
 
-	addi sp, sp, 20							#stack ra, s0, s1, s2, s3, s4
+	addi sp, sp, 20								# stack ra, s0, s1, s2, s3, s4
 	stw ra, -20(sp)
 	stw s0, -16(sp)
 	stw s1, -12(sp)
@@ -329,9 +329,9 @@ detect_collision:
 	stw s3, -4(sp)
 	stw s4, 0(sp)
 
-	add s2, zero, a0								# store parameter a0
+	add s2, zero, a0							# store parameter a0
 
-	ldw a0, T_X(zero)								# load the position of the falling piece's anchor
+	ldw a0, T_X(zero)							# load the position of the falling piece's anchor
 	ldw a1, T_Y(zero)
 
 	# branch to correct simulation
@@ -358,24 +358,24 @@ detect_collision:
 	check_collision:
 		# compute base address of the falling piece
 		ldw t0, T_type(zero)
-		slli t0, t0, 2							#each type has four different directions
+		slli t0, t0, 2							# each type has four different directions
 		ldw t1, T_orientation(zero)
 		add s3, t0, t1
-		slli s3, s3, 2							#word aligned
+		slli s3, s3, 2							# word aligned
 		# sth else ?
 
 
-		add s4, zero, zero												# counter (to loop over 4 parts of the piece)
+		add s4, zero, zero						# counter (to loop over 4 parts of the piece)
 		detect_collision_loop:
 
 			add t0, zero, s4
 			slli t0, t0, 2
-			add t0, t0, s3												# t0 = 4 * s4 + baseAddress(s3)
+			add t0, t0, s3						# t0 = 4 * s4 + baseAddress(s3)
 			addi t1, t0, 0xC
-			add t1, t1, s3												# t1 = t0 + 12 + baseAddress(s3) 
+			add t1, t1, s3						# t1 = t0 + 12 + baseAddress(s3) 
 
-			ldw t0, 0(t0)					# x offset
-			ldw t1, 0(t1)					# y offset
+			ldw t0, 0(t0)						# x offset
+			ldw t1, 0(t1)						# y offset
 
 			# calculating x and y based on offsets
 			ldw a0, T_X(zero)
@@ -383,13 +383,13 @@ detect_collision:
 			add a0, a0, t0
 			add a1, a1, t1
 
-			add s0, zero, a0											# saving x coord of simulated piece part
-			add s1, zero, a1											# saving y coord of simulated piece part
+			add s0, zero, a0					# saving x coord of simulated piece part
+			add s1, zero, a1					# saving y coord of simulated piece part
 
 
 			# check if the simulated piece is still in the grid
 			call in_gsa
-			bne v0, zero, detect_collision_colliding					# error if not in gsa anymore
+			bne v0, zero, detect_collision_colliding	# error if not in gsa anymore
 
 
 			# check if the simulated piece doesn't collide with another
@@ -398,28 +398,27 @@ detect_collision:
 			call get_gsa
 
 			addi t0, zero, PLACED
-			beq v0, t0, detect_collision_colliding						# error if colliding with terrain
+			beq v0, t0, detect_collision_colliding		# error if colliding with terrain
 
 
 			# iterate over the 3 non-achor piece parts
 			addi s4, s4, 1
 			addi t7, zero, 3
 
-			bne s4, t7, detect_collision_loop							# loop if the 4 parts of the piece haven't been checked
+			bne s4, t7, detect_collision_loop	# loop over 4 piece parts
 
 			# no collision detected
 			addi t0, zero, NONE
-			add v0, zero, t0											# returns NONE since no collision
+			add v0, zero, t0					# returns NONE since no collision
 			jmpi detect_collision_end
 
 
 	# collision detected
 	detect_collision_colliding:
-		add v0, zero, s2												# returns input value since collision detected
-
+		add v0, zero, s2						# returns input value since collision detected
 
 	detect_collision_end:
-		ldw s4, 0(sp)													# destack s4, s3, s2, s1, s0, ra
+		ldw s4, 0(sp)							# destack s4, s3, s2, s1, s0, ra
 		ldw s3, -4(sp)
 		ldw s2, -8(sp)
 		ldw s1, -12(sp)
