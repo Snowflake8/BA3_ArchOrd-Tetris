@@ -72,56 +72,75 @@
 main:
 
 	addi sp,zero,SP_START		#NOT SURE HOW TO DO THIS
-
+	
 	call clear_leds
-	addi a0,zero,3
-	addi a1,zero,3
-	call set_pixel
-	addi a0,zero,7
-	addi a1,zero,3
-	call set_pixel
 
-	addi a0,zero,7
-	addi a1,zero,3
-	call in_gsa
-	add s0,zero,v0			#should be 0
 
-	addi a0,zero,12
-	addi a1,zero,3
-	call in_gsa
-	add s1,zero,v0			#should be 1
-
-	addi a0,zero,7
-	addi a1,zero,-1
-	call in_gsa
-	add s2,zero,v0			#should be 1
-
-	addi a0,zero,2
-	addi a1,zero,2
-	addi a2,zero, FALLING
-	call set_gsa
-
-	addi a0,zero,7
-	addi a1,zero,3
-	call get_gsa
-	add s3,zero,v0			#should de 2
-
-	addi a0,zero,5
-	addi a1,zero,5
-	addi a2,zero, FALLING
-	call set_gsa
-
-	addi t0,zero,S
-	addi t1,zero,N
-	addi t2,zero,8
-	addi t3,zero,5
-	stw t0,T_type(zero)
-	stw t1,T_orientation(zero)
-	stw t2,T_X(zero)
-	stw t3,T_Y(zero)
-
-	addi a0,zero,FALLING
+	call generate_tetromino
+	addi a0, zero, FALLING
 	call draw_tetromino
+	call draw_gsa
+
+
+	#addi a0, zero, W_COL
+	#call detect_collision
+	#add s0, zero, v0
+
+	#addi a0, zero, E_COL
+	#call detect_collision
+	#add s1, zero, v0
+
+	#addi a0, zero, So_COL
+	#call detect_collision
+#	add s2, zero, v0
+
+	#addi a0, zero, OVERLAP
+	#call detect_collision
+#	add s3, zero, v0
+
+	
+	addi a0, zero, 4
+	addi a1, zero, 1
+	addi a2, zero, PLACED
+	call set_gsa
+	
+	addi a0, zero, 6
+	addi a1, zero, 2
+	addi a2, zero, PLACED
+	call set_gsa
+	
+	addi a0, zero, 7
+	addi a1, zero, 1
+	addi a2, zero, PLACED
+	call set_gsa
+	
+
+	addi a0, zero, W_COL
+	call detect_collision
+	add s4, zero, v0
+
+	addi a0, zero, E_COL
+	call detect_collision
+	add s5, zero, v0
+
+	addi a0, zero, So_COL
+	call detect_collision
+	add s6, zero, v0
+
+
+
+
+	addi a0, zero, 6
+	addi a1, zero, 0
+	addi a2, zero, PLACED
+	call set_gsa
+
+	addi a0, zero, OVERLAP
+	call detect_collision
+	add s7, zero, v0
+
+
+
 	
 
 	call draw_gsa	
@@ -322,19 +341,21 @@ generate_tetromino:
 ; BEGIN:detect_collision
 detect_collision:
 
-	addi sp, sp, 20								# stack ra, s0, s1, s2, s3, s4
-	stw ra, -20(sp)
-	stw s0, -16(sp)
-	stw s1, -12(sp)
-	stw s2, -8(sp)
-	stw s3, -4(sp)
-	stw s4, 0(sp)
+	addi sp, sp, 32								# stack ra, s0, s1, s2, s3, s4, s5, s6
+	stw ra, -28(sp)
+	stw s0, -24(sp)
+	stw s1, -20(sp)
+	stw s2, -16(sp)
+	stw s3, -12(sp)
+	stw s4, -8(sp)
+	stw s5, -4(sp)
+	stw s6, 0(sp)
 
 	add s2, zero, a0							# store parameter a0
 
-	ldw a0, T_X(zero)							# load the position of the falling piece's anchor
-	ldw a1, T_Y(zero)
-
+	addi s5, zero, 0							# create offsets for collisions
+	addi s6, zero, 0
+	
 	# branch to correct simulation
 	# in case of OVERLAP, goes through directly to check_collision
 	addi t0, zero, W_COL
@@ -343,16 +364,17 @@ detect_collision:
 	beq s2, t0, detect_collision_case_e_col
 	addi t0, zero, So_COL
 	beq s2, t0, detect_collision_case_so_col
+	jmpi check_collision
 
 	# creates a simulation of the falling piece where we are checking it for collision
 	detect_collision_case_w_col:
-		addi a0, a0, -1
+		addi s5, s5, -1
 		jmpi check_collision
 	detect_collision_case_e_col:
-		addi a0, a0, 1
+		addi s5, s5, 1
 		jmpi check_collision
 	detect_collision_case_so_col:
-		addi a1, a1, 1
+		addi s6, s6, 1
 		jmpi check_collision
 
 
@@ -363,7 +385,7 @@ detect_collision:
 		ldw t1, T_orientation(zero)
 		add s3, t0, t1
 		slli s3, s3, 2							# word aligned
-		# sth else ?
+		ldw s3, DRAW_Ax(s3)
 
 
 		add s4, zero, zero						# counter (to loop over 4 parts of the piece)
@@ -372,8 +394,7 @@ detect_collision:
 			add t0, zero, s4
 			slli t0, t0, 2
 			add t0, t0, s3						# t0 = 4 * s4 + baseAddress(s3)
-			addi t1, t0, 0xC
-			add t1, t1, s3						# t1 = t0 + 12 + baseAddress(s3) 
+			addi t1, t0, 0xC					# t1 = t0 + 12
 
 			ldw t0, 0(t0)						# x offset
 			ldw t1, 0(t1)						# y offset
@@ -381,8 +402,10 @@ detect_collision:
 			# calculating x and y based on offsets
 			ldw a0, T_X(zero)
 			ldw a1, T_Y(zero)
-			add a0, a0, t0
+			add a0, a0, t0						# add anchor point offsets
 			add a1, a1, t1
+			add a0, a0, s5						# add collision offsets
+			add a1, a1, s6
 
 			add s0, zero, a0					# saving x coord of simulated piece part
 			add s1, zero, a1					# saving y coord of simulated piece part
@@ -408,10 +431,9 @@ detect_collision:
 
 			bne s4, t7, detect_collision_loop	# loop over 4 piece parts
 
-			# no collision detected
-			addi t0, zero, NONE
-			add v0, zero, t0					# returns NONE since no collision
-			jmpi detect_collision_end
+	# no collision detected
+	addi v0, zero, NONE							# returns NONE since no collision
+	jmpi detect_collision_end
 
 
 	# collision detected
@@ -419,13 +441,15 @@ detect_collision:
 		add v0, zero, s2						# returns input value since collision detected
 
 	detect_collision_end:
-		ldw s4, 0(sp)							# destack s4, s3, s2, s1, s0, ra
-		ldw s3, -4(sp)
-		ldw s2, -8(sp)
-		ldw s1, -12(sp)
-		ldw s0, -16(sp)
-		ldw ra, -20(sp)
-		addi sp, sp, -20
+		ldw s6, 0(sp)							# destack s6, s5, s4, s3, s2, s1, s0, ra
+		ldw s5, -4(sp)
+		ldw s4, -8(sp)
+		ldw s3, -12(sp)
+		ldw s2, -16(sp)
+		ldw s1, -20(sp)
+		ldw s0, -24(sp)
+		ldw ra, -28(sp)
+		addi sp, sp, -32
 
 	ret
 ; END:detect_collision
@@ -488,9 +512,10 @@ act:
 		jmpi act_end
 
 	act_moveL:
-		add a0,zero,s0
+		addi a0,zero,W_COL
 		call detect_collision
-		bne v0,s0,act_fail			#if collision we do nothing to t_x
+		addi t0, zero, W_COL
+		beq v0,t0,act_fail			#if collision we do nothing to t_x
 
 		ldw t0,T_X(zero)			#else -1 to t_x
 		addi t0,t0,-1
@@ -500,9 +525,10 @@ act:
 		jmpi act_end
 
 	act_moveR:
-		add a0,zero,s0
+		addi a0,zero,E_COL
 		call detect_collision
-		bne v0,s0,act_fail			#if collision we do nothing to t_x
+		addi t0, zero, E_COL
+		beq v0,t0,act_fail			#if collision we do nothing to t_x
 
 		ldw t0,T_X(zero)			#else +1 to t_x
 		addi t0,t0,1
@@ -512,9 +538,10 @@ act:
 		jmpi act_end
 	
 	act_moveD:	
-		add a0,zero,s0
+		addi a0,zero,So_COL
 		call detect_collision
-		bne v0,s0,act_fail			#if collision we do nothing to t_y
+		addi t0, zero, So_COL
+		beq v0,t0,act_fail			#if collision we do nothing to t_y
 	
 		ldw t0,T_Y(zero)			#else +1 to t_y
 		addi t0,t0,1
@@ -524,7 +551,6 @@ act:
 		jmpi act_end
 	
 	act_rot:
-		#stack gsa and all
 		
 		addi sp,sp,16			#stack x,y and orientation
 		stw s1,-12(sp)
@@ -538,22 +564,24 @@ act:
 		add a0,zero,s0
 		call rotate_tetromino
 		
-		addi s1,zero,0
+		addi s1,zero,0			#act_rot_loop counter
 	
 		addi a0,zero,OVERLAP
 		call detect_collision
-
 		addi t0,zero,OVERLAP
 		beq t0,v0,act_rot_loop
+
+		ldw s1,-12(sp)
 		addi sp,sp,-16			#directly sucessful
 		addi v0,zero,0
 		jmpi act_end
 			
 		act_rot_loop:
 
-			addi s1,zero,1
+			addi s1,s1,1
 			addi t0,zero,3
 			beq s1,t0,act_rot_end_fail
+
 			ldw a0,T_X(zero)
 			call towards_center
 			ldw t0,T_X(zero)
@@ -562,24 +590,24 @@ act:
 	
 			addi a0,zero,OVERLAP
 			call detect_collision			
-
 			addi t0,zero,OVERLAP
 			beq t0,v0,act_rot_loop
 	
+		ldw s1,-12(sp)
 		addi sp,sp,-16			#sucessful within 2 towards center
 		addi v0,zero,0
 		jmpi act_end
 	act_rot_end_fail:
 		addi sp,sp,-16			#destack ra,s0,s1
 	
-		ldw t0,16(sp)
+		ldw t0,16(sp)			#takes original T_X, T_Y, T_orientation values
 		stw t0,T_orientation(zero)
 		ldw t0,12(sp)
 		stw t0,T_Y(zero)
 		ldw t0,8(sp)
 		stw t0,T_X(zero)
 		ldw s1,4(zero)
-		#destack gsa and all
+
 act_fail:
 	addi v0,zero,1
 act_end:
@@ -603,7 +631,7 @@ clear_gsa:
 
 		addi s1,zero,0		#put y to 0 	
 		clear_gsa_y_loop:
-			add a0,zero,s0		#light the pixel
+			add a0,zero,s0		#all gsa is NOTHING
 			add a1,zero,s1
 			addi a2,zero,NOTHING
 			call set_pixel
@@ -625,15 +653,17 @@ clear_gsa:
 
 ; BEGIN:reset_game
 reset_game:#TODO put score to 0
-	addi sp,sp,4			#stack ra,s0,s1
+	addi sp,sp,4			#stack ra
 	stw ra,0(sp)
 	call clear_gsa
 	
 	call generate_tetromino
+	addi a0, zero, FALLING
 	call draw_tetromino
 	call draw_gsa
+
 	ldw ra,0(sp)
-	addi sp,sp,-4			#stack ra,s0,s1
+	addi sp,sp,-4			#stack ra
 	ret
 ; END:reset_game
 
