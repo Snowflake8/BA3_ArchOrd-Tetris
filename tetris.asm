@@ -599,6 +599,78 @@ act_end:
 ; END:act
 
 
+; BEGIN:get_input
+get_input:
+	addi t7,zero,4
+	ldw t7,BUTTONS(t7)
+
+	addi t1,zero,0			#counter for the 5 buttons
+	get_input_loop:
+		addi t0,zero,5
+		beq t1,t0,get_input_fail
+
+		slli t2,t1,1		#create the mask
+		and t2,t2,t7		#is bit at 1?
+		
+		addi t1,t1,1		#re-loop it button was not pressed
+		beq t2,zero,get_input_loop
+		
+	add v0,zero,t2
+	jmpi get_input_end
+
+get_input_fail:
+	addi v0,zero,0
+
+get_input_end:
+	addi t7,zero,4
+	ldw t7,BUTTONS(t7)
+	ret
+; END:get_input
+
+
+; BEGIN:detect_full_line
+detect_full_line:
+	addi sp,sp,16			#stack ra,s0,s1
+	stw ra,-12(sp)
+	stw s0,8(sp)
+	stw s1,4(sp)
+	stw s2,0(sp)
+	
+	addi s0,zero,0			#y-counter
+	detect_full_line_y_loop:
+		addi s1,zero,0		#x-counter
+		addi s2,zero,PLACED		#Stays at 1 if line is at 1
+
+		detect_full_line_x_loop:
+			add a0,zero,s1
+			add a1,zero,s0
+			call get_gsa
+
+			and s2,s2,v0	#is pixel PLACED?
+			
+			addi s1,s1,1
+			addi t0,zero,X_LIMIT
+			bne s1,t0,detect_full_line_x_loop
+
+		addi t0,zero,PLACED
+		bne s2,t0,detect_full_line_end	#whole line is placed
+
+		addi s0,s0,1
+		addi t0,zero,Y_LIMIT
+		bne s0,t0,detect_full_line_x_loop
+		
+detect_full_line_end:
+	add v0,zero,s0			#result
+	
+	ldw s2,0(sp)
+	ldw s1,-4(sp)
+	ldw s0,-8(sp)			#destack
+	ldw ra,-12(sp)
+	addi sp,sp,-16
+	ret
+; END:detect_full_line
+
+
 ; BEGIN:helper
 clear_gsa:
 	addi sp,sp,12			#stack ra,s0,s1
@@ -634,8 +706,13 @@ clear_gsa:
 
 ; BEGIN:reset_game
 reset_game:#TODO put score to 0
+
 	addi sp,sp,4			#stack ra
 	stw ra,0(sp)
+	
+	ldw zero,SCORE(zero)
+	#call display_score
+
 	call clear_gsa
 	
 	call generate_tetromino
