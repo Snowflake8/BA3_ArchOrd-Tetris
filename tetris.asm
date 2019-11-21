@@ -600,6 +600,121 @@ act_end:
 
 
 ; BEGIN:helper
+# input : a0, y-coord of the line to be filled
+# input : a1, value the line should be filled with
+set_full_line:
+
+	addi sp, sp, -16							# stack ra, s0, s1, s2
+	stw ra, 12(sp)
+	stw s0, 8(sp)
+	stw s1, 4(sp)
+	stw s2, 0(sp)
+
+	addi s0, zero, 0							# x-coord (counter)
+	add s1, zero, a0							# y-coord of the line to be filled
+	add s2, zero, a1							# value for the line to be filled with
+	
+	set_full_line_loop:							# iterate over the 12 x coordinates
+
+		add a0, zero, s0
+		add a1, zero, s1
+		add a2, zero, s2
+		call set_gsa
+
+		addi s0, s0, 1
+		addi t0, zero, X_LIMIT
+		bne s0, t0, set_full_line_loop
+
+	ldw s2, 0(sp)								# destack ra, s0, s1, s2
+	ldw s1, 4(sp)
+	ldw s0, 8(sp)
+	ldw ra, 12(sp)
+	addi sp, sp, 16
+
+	ret
+; END:helper
+
+; BEGIN:remove_full_line
+# input : a0, y-coord of the line to be removed
+remove_full_line:
+	
+	# s0 : y-coord of the line (also y-coord counter)
+	# s1 : x-coord counter
+
+	addi sp, sp, -12							# stack ra, s0, s1
+	stw ra, 8(sp)
+	stw s0, 4(sp)
+	stw s1, 0(sp)
+
+	add s0, zero, a0							# saving y-coord value of the line
+
+	add a0, zero, s0
+	addi a1, zero, 0
+	call set_full_line
+	call draw_gsa
+	call wait
+
+	add a0, zero, s0
+	addi a1, zero, 1
+	call set_full_line
+	call draw_gsa
+	call wait
+
+	add a0, zero, s0
+	addi a1, zero, 0
+	call set_full_line
+	call draw_gsa
+	call wait
+
+	add a0, zero, s0
+	addi a1, zero, 1
+	call set_full_line
+	call draw_gsa
+	call wait
+
+	add a0, zero, s0
+	addi a1, zero, 0
+	call set_full_line
+	call draw_gsa
+	# wait?
+
+
+	remove_full_line_y_loop:
+		
+		addi s1, zero, 0						# x counter
+		remove_full_line_x_loop:
+
+			add a0, zero, s1
+			addi a1, s0, -1						# get_gsa(a0 = x, a1 = y - 1)
+			call get_gsa						# v0 has the value of the cell ABOVE the one to modify
+
+			add a0, zero, s1
+			add a1, zero, s2
+			add a2, zero, v0
+			call set_gsa						# set the value of the cell to modify to the one above's value
+
+			addi s1, s1, 1
+			addi t0, zero, X_LIMIT
+			bne s1, t0, remove_full_line_x_loop
+
+		addi s0, s0, -1
+		bne s0, zero, remove_full_line_y_loop	# loop over all rows except the very top one (y = 0)
+
+	
+	addi a0, zero, 0
+	addi a1, zero, 0
+	call set_full_line 							# empties top row (y = 0)
+
+	ldw s1, 0(sp)								# destack ra, s0, s1
+	ldw s0, 4(sp)
+	ldw ra, 8(sp)
+	addi sp, sp, 12
+
+	ret
+; END:remove_full_line
+
+
+; BEGIN:helper
 clear_gsa:
 	addi sp,sp,12			#stack ra,s0,s1
 	stw ra,-8(sp)
