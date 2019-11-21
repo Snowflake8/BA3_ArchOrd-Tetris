@@ -65,7 +65,7 @@
 
 
 ; BEGIN:helper
-.equ SP_START,0x11FC
+.equ SP_START,0x2000
 ; END:helper
 
 ; BEGIN:main
@@ -73,6 +73,15 @@ main:
 
 	addi sp,zero,SP_START		#NOT SURE HOW TO DO THIS
 	
+	addi s0,zero, 111
+	addi s1,zero ,222
+	addi s2,zero, 333
+	addi s3,zero, 444
+	addi s4,zero, 555
+	addi s5,zero, 666
+	addi s6,zero, 777
+	addi s7,zero, 888
+
 	call clear_leds
 
 	#addi a0, zero, 6
@@ -187,9 +196,9 @@ set_gsa:
 
 ; BEGIN:draw_gsa
 draw_gsa:
-	addi sp,sp,12			#stack ra,s0,s1
-	stw ra,-8(sp)
-	stw s0,-4(sp)
+	addi sp,sp,-12			#stack ra,s0,s1
+	stw ra,8(sp)
+	stw s0,4(sp)
 	stw s1,0(sp)
 
 	call clear_leds			#put all leds to 0		
@@ -221,18 +230,18 @@ draw_gsa:
 		blt s0,t6,draw_x_loop	#iterate over all x
 
 	ldw s1,	0(sp)			#desatck
-	ldw s0,-4(sp)
-	ldw ra,-8(sp)
-	addi sp,sp,-12	
+	ldw s0,4(sp)
+	ldw ra,8(sp)
+	addi sp,sp,12	
 
 	ret
 ; END:draw_gsa
 
 ; BEGIN:draw_tetromino
 draw_tetromino:
-	addi sp,sp,12			#stack ra,s0,s1
-	stw ra,-8(sp)
-	stw s0,-4(sp)
+	addi sp,sp,-12			#stack ra,s0,s1
+	stw ra,8(sp)
+	stw s0,4(sp)
 	stw s1,0(sp)
 
 	add a2, zero,a0				#a2 is the arg for set_gsa
@@ -272,9 +281,9 @@ draw_tetromino:
 		bne s0,t7,draw_tetromino_loop 	#iterate over the 3 non-achor points
 		
 	ldw s1,	0(sp)			#destack
-	ldw s0,-4(sp)
-	ldw ra,-8(sp)
-	addi sp,sp,-12	
+	ldw s0,4(sp)
+	ldw ra,8(sp)
+	addi sp,sp,12	
 
 	ret
 ; END:draw_tetromino
@@ -301,14 +310,14 @@ generate_tetromino:
 ; BEGIN:detect_collision
 detect_collision:
 
-	addi sp, sp, 32								# stack ra, s0, s1, s2, s3, s4, s5, s6
-	stw ra, -28(sp)
-	stw s0, -24(sp)
-	stw s1, -20(sp)
-	stw s2, -16(sp)
-	stw s3, -12(sp)
-	stw s4, -8(sp)
-	stw s5, -4(sp)
+	addi sp, sp, -32								# stack ra, s0, s1, s2, s3, s4, s5, s6
+	stw ra, 28(sp)
+	stw s0, 24(sp)
+	stw s1, 20(sp)
+	stw s2, 16(sp)
+	stw s3, 12(sp)
+	stw s4, 8(sp)
+	stw s5, 4(sp)
 	stw s6, 0(sp)
 
 	add s2, zero, a0							# store parameter a0
@@ -423,14 +432,14 @@ detect_collision:
 
 	detect_collision_end:
 		ldw s6, 0(sp)							# destack s6, s5, s4, s3, s2, s1, s0, ra
-		ldw s5, -4(sp)
-		ldw s4, -8(sp)
-		ldw s3, -12(sp)
-		ldw s2, -16(sp)
-		ldw s1, -20(sp)
-		ldw s0, -24(sp)
-		ldw ra, -28(sp)
-		addi sp, sp, -32
+		ldw s5, 4(sp)
+		ldw s4, 8(sp)
+		ldw s3, 12(sp)
+		ldw s2, 16(sp)
+		ldw s1, 20(sp)
+		ldw s0, 24(sp)
+		ldw ra, 28(sp)
+		addi sp, sp, 32
 
 	ret
 ; END:detect_collision
@@ -470,8 +479,8 @@ center_negative:
 
 ; BEGIN:act
 act:
-	addi sp,sp,8			#stack ra,s0,s1
-	stw ra,-4(sp)
+	addi sp,sp,-8			#stack ra,s0,s1
+	stw ra,4(sp)
 	stw s0,0(sp)
 
 	add s0,zero,a0			#our argument
@@ -533,12 +542,12 @@ act:
 	
 	act_rot:
 		
-		addi sp,sp,16			#stack x,y and orientation
-		stw s1,-12(sp)
+		addi sp,sp,-16			#stack x,y and orientation
+		stw s1,12(sp)
 		ldw t0,T_X(zero)
-		stw t0,-8(sp)
+		stw t0,8(sp)
 		ldw t0,T_Y(zero)
-		stw t0,-4(sp)
+		stw t0,4(sp)
 		ldw t0,T_orientation(zero)
 		stw t0,0(sp)
 	
@@ -552,8 +561,8 @@ act:
 		addi t0,zero,OVERLAP
 		beq t0,v0,act_rot_loop
 
-		ldw s1,-12(sp)
-		addi sp,sp,-16			#directly sucessful
+		ldw s1,12(sp)
+		addi sp,sp,16			#directly sucessful
 		addi v0,zero,0
 		jmpi act_end
 			
@@ -574,27 +583,29 @@ act:
 			addi t0,zero,OVERLAP
 			beq t0,v0,act_rot_loop
 	
-		ldw s1,-12(sp)
-		addi sp,sp,-16			#sucessful within 2 towards center
+		ldw s1,12(sp)
+		addi sp,sp,16			#sucessful within 2 towards center
 		addi v0,zero,0
 		jmpi act_end
 	act_rot_end_fail:
-		addi sp,sp,-16			#destack ra,s0,s1
+					#destack ra,s0,s1
 	
-		ldw t0,16(sp)			#takes original T_X, T_Y, T_orientation values
-		stw t0,T_orientation(zero)
-		ldw t0,12(sp)
-		stw t0,T_Y(zero)
+		ldw s1,12(sp)	#takes original T_X, T_Y, T_orientation values
 		ldw t0,8(sp)
 		stw t0,T_X(zero)
-		ldw s1,4(zero)
+		ldw t0,4(sp)
+		stw t0,T_Y(zero)
+		ldw t0,0(sp)
+		stw t0,T_orientation(zero)
+
+		addi sp,sp,16
 
 act_fail:
 	addi v0,zero,1
 act_end:
 	ldw s0,0(sp)			#destack
-	ldw ra,-4(sp)
-	addi sp,sp,-8
+	ldw ra,4(sp)
+	addi sp,sp,8
 	ret
 ; END:act
 
@@ -630,8 +641,8 @@ get_input_end:
 
 ; BEGIN:detect_full_line
 detect_full_line:
-	addi sp,sp,16			#stack ra,s0,s1
-	stw ra,-12(sp)
+	addi sp,sp,-16			#stack ra,s0,s1
+	stw ra,12(sp)
 	stw s0,8(sp)
 	stw s1,4(sp)
 	stw s2,0(sp)
@@ -663,12 +674,86 @@ detect_full_line_end:
 	add v0,zero,s0			#result
 	
 	ldw s2,0(sp)
-	ldw s1,-4(sp)
-	ldw s0,-8(sp)			#destack
-	ldw ra,-12(sp)
-	addi sp,sp,-16
+	ldw s1,4(sp)
+	ldw s0,8(sp)			#destack
+	ldw ra,12(sp)
+	addi sp,sp,16
 	ret
 ; END:detect_full_line
+
+
+; BEGIN:increment_score
+increment_score:
+	ldw t0,SCORE(zero)
+	addi t0,t0,1
+	stw t0,SCORE(zero)
+	ret
+; END:increment_score
+
+
+; BEGIN:helper
+	.equ SCORE_LIMIT,10000
+
+POWERS_OF_TEN:
+	.word 1000
+	.word 100
+	.word 10
+; END:helper
+
+; BEGIN:display_score
+display_score:
+	addi t0,zero,SCORE_LIMIT
+	ldw t7,SCORE(zero)
+	blt t7,t0,display_score_overflow		#if over 9999
+
+	addi sp,sp,-8
+	stw s0,4(sp)
+	stw s1,0(sp)
+
+	addi s0,zero,0					#diplay we are tackling
+
+	display_score_display_loop:
+		addi s1,zero,0				#number on that display 
+
+		slli t6,s0,2
+		ldw t6,POWERS_OF_TEN(t6)		#power of ten we use
+
+		display_score_digit_loop:
+			blt t7,t6,display_score_digit_loop_end
+
+			addi s1,s1,1			#modulo that power of ten
+			sub t7,t7,t6
+
+			jmpi display_score_digit_loop
+		display_score_digit_loop_end:
+		slli s1,s1,2
+		ldw t1,font_data(s1)		#get the corresponding display value
+
+		slli t0,s0,2	
+		stw t1,SEVEN_SEGS(t0)		#store t on the correct display
+		
+		addi s0,s0,1
+		addi t0,zero,4
+		bne s1,t0,display_score_display_loop	#loop over all displays
+
+	ldw s1,0(sp)
+	ldw s0,4(sp)
+	addi sp,sp,8
+	ret
+
+display_score_overflow:
+	addi t0,zero,36
+	ldw t0,font_data(t0)
+	
+	stw t0,SEVEN_SEGS(zero)
+	addi t1,zero,4
+	stw t0,SEVEN_SEGS(t1)
+	addi t1,t1,4
+	stw t0,SEVEN_SEGS(t1)
+	addi t1,t1,4
+	stw t0,SEVEN_SEGS(t1)
+	ret
+; END:display_score
 
 
 ; BEGIN:helper
@@ -704,6 +789,7 @@ clear_gsa:
 	ret
 ; END:helper
 
+
 ; BEGIN:reset_game
 reset_game:#TODO put score to 0
 
@@ -711,7 +797,7 @@ reset_game:#TODO put score to 0
 	stw ra,0(sp)
 	
 	ldw zero,SCORE(zero)
-	#call display_score
+	call display_score
 
 	call clear_gsa
 	
