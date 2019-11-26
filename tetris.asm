@@ -69,107 +69,65 @@
 ; END:helper
 
 ; BEGIN:main
+
 main:
-
 	addi sp,zero,SP_START		#NOT SURE HOW TO DO THIS
-	
-	addi s0,zero, 111
-	addi s1,zero ,222
-	addi s2,zero, 333
-	addi s3,zero, 444
-	addi s4,zero, 555
-	addi s5,zero, 666
-	addi s6,zero, 777
-	addi s7,zero, 888
+	call reset_game			#beggining of the game
+	outer_loop:
+		addi s0,zero,0
+		inner_loop:			#run for RATE iterations where you can act
+			call draw_gsa		#draw the gsa
+			call display_score
 
-	call clear_leds
+			addi a0, zero, NOTHING		#erase the tetromino
+			call draw_tetromino
+			call wait
+			call get_input		#get the input
+			beq v0,zero,no_input
+				add a0,zero,v0
+				call act		#act if input
 
-	#addi a0, zero, 6
-	#addi a1, zero, 3
-	#addi a2, zero, PLACED
-	#call set_gsa
+			no_input:
+			addi a0, zero, FALLING		#redraw the tetromino
+			call draw_tetromino
+			addi s0,s0,1
+			addi t0,zero,RATE
+			bne s0,t0,inner_loop
 
+		addi a0, zero, NOTHING		#erase the tetromino
+	 	call draw_tetromino
+		addi a0,zero,moveD			#move down
+		call act
+		add s6,zero,v0
+		addi a0, zero, FALLING		#redraw the tetromino
+	 	call draw_tetromino
 
-#	call generate_tetromino
-#	addi a0, zero, FALLING
-#	addi t0, zero, B
-#	stw t0, T_type(zero)
+		beq s6,zero,outer_loop		#if we still moved down jump back
 
+	addi a0, zero, PLACED			#place the tetromino
+	call draw_tetromino
 
-	addi a0, zero, 5
-	addi a1, zero, PLACED
-	call set_full_line
+	lines_disapear:				#handles the full lines
+		call detect_full_line
+		addi t0,zero,8
+		beq v0,t0,end_lines_disapear
+		call increment_score
+		add a0,zero,v0
+		call remove_full_line
+		call draw_gsa
+		jmpi lines_disapear
+	end_lines_disapear:
 
+	call generate_tetromino		#generate new tetromino
+	addi a0,zero,OVERLAP
+	call detect_collision
+	addi t0,zero,OVERLAP
+	beq v0,t0,main			#si overlap
+	addi a0, zero, FALLING
+ 	call draw_tetromino
+	call wait 				#not sure here
+	jmpi outer_loop	
 
-	#addi a0, zero, 1
-	#addi a1, zero, PLACED
-#	call set_full_line
-
-
-	#addi a0, zero, 5
-	#addi a1, zero, PLACED
-	#call set_full_line
-
-
-
-
-
-
-
-
-	addi a0, zero, 0
-	addi a1, zero, 0
-	addi a2, zero, PLACED
-	call set_gsa
-
-	addi a0, zero, 2
-	addi a1, zero, 2
-	addi a2, zero, PLACED
-	call set_gsa
-
-	addi a0, zero, 1
-	addi a1, zero, 1
-	addi a2, zero, PLACED
-	call set_gsa
-
-	addi a0, zero, 3
-	addi a1, zero, 3
-	addi a2, zero, PLACED
-	call set_gsa
-
-	addi a0, zero, 4
-	addi a1, zero, 4
-	addi a2, zero, PLACED
-	call set_gsa
-
-	addi a0, zero, 5
-	addi a1, zero, 5
-	addi a2, zero, PLACED
-	call set_gsa
-
-
-	addi a0, zero, 6
-	addi a1, zero, 6
-	addi a2, zero, PLACED
-	call set_gsa
-	call draw_gsa
-
-
-
-lines_disappear:
-
-	call detect_full_line
-	addi s0, s0, 1
-	addi t0, zero, 8
-	beq v0, t0, lll
-	add a0, zero, v0
-	call remove_full_line
-	call draw_gsa
-	addi s1, s1, 1
-	jmpi lines_disappear
-
-lll :
-	call draw_gsa
 	jmpi end
 ; END:main
 
@@ -989,63 +947,6 @@ reset_game:#TODO put score to 0
 end:
 	break
 ; END:end
-
-
-
-main_bis:
-	call reset_game			#beggining of the game
-	outer_loop:
-		addi s0,zero,0
-		inner_loop:
-			call draw_gsa
-			call display_score
-			addi a0, zero, NOTHING
-			call draw_tetromino
-			call wait
-			call get_input
-			beq v0,zero,no_input
-				add a0,zero,v0
-				call act
-			no_input:
-			addi a0, zero, FALLING
-			call draw_tetromino
-			addi s0,s0,1
-			addi t0,zero,RATE
-			bne s0,t0,inner_loop
-		addi a0, zero, NOTHING
-	 	call draw_tetromino
-		addi a0,zero,moveD
-		call act
-		add s6,zero,v0
-		addi a0, zero, FALLING
-	 	call draw_tetromino
-
-		beq s6,zero,outer_loop
-
-	addi a0, zero, PLACED
-	call draw_tetromino
-	lines_disapear:
-		call detect_full_line
-		addi t0,zero,8
-		beq v0,t0,end_lines_disapear
-		add a0,zero,v0
-		call remove_full_line
-		call draw_gsa
-		jmpi lines_disapear
-	end_lines_disapear:
-
-	call generate_tetromino
-	addi a0,zero,OVERLAP
-	call detect_collision
-	addi t0,zero,OVERLAP
-	beq v0,t0,main_bis
-	call increment_score
-	addi a0, zero, FALLING
- 	call draw_tetromino
-	call wait #not sure here
-	jmpi outer_loop	
-
-	jmpi end
 
 font_data:
   .word 0xFC  ; 0
