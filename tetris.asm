@@ -817,6 +817,63 @@ end:
 	break
 ; END:end
 
+
+
+main_bis:
+	call reset_game			#beggining of the game
+	outer_loop:
+		addi s0,zero,0
+		inner_loop:
+			call draw_gsa
+			call display_score
+			addi a0, zero, NOTHING
+			call draw_tetromino
+			call wait
+			call get_input
+			beq v0,zero,no_input
+				add a0,zero,v0
+				call act
+			no_input:
+			addi a0, zero, FALLING
+			call draw_tetromino
+			addi s0,s0,1
+			addi t0,zero,RATE
+			bne s0,t0,inner_loop
+		addi a0, zero, NOTHING
+	 	call draw_tetromino
+		addi a0,zero,moveD
+		call act
+		add s6,zero,v0
+		addi a0, zero, FALLING
+	 	call draw_tetromino
+
+		beq s6,zero,outer_loop
+
+	addi a0, zero, PLACED
+	call draw_tetromino
+	lines_disapear:
+		call detect_full_line
+		addi t0,zero,8
+		beq v0,t0,end_lines_disapear
+		add a0,zero,v0
+		call remove_full_line
+		call draw_gsa
+		jmpi lines_disapear
+	end_lines_disapear:
+
+	call generate_tetromino
+	addi a0,zero,OVERLAP
+	call detect_collision
+	addi t0,zero,OVERLAP
+	beq v0,t0,main_bis
+	call increment_score
+	addi a0, zero, FALLING
+ 	call draw_tetromino
+	call wait #not sure here
+	jmpi outer_loop	
+
+	jmpi end
+
 font_data:
   .word 0xFC  ; 0
   .word 0x60  ; 1
