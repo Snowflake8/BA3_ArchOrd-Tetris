@@ -90,29 +90,86 @@ main:
 	#call set_gsa
 
 
-	call generate_tetromino
-	addi a0, zero, FALLING
-	addi t0, zero, B
-	stw t0, T_type(zero)
+#	call generate_tetromino
+#	addi a0, zero, FALLING
+#	addi t0, zero, B
+#	stw t0, T_type(zero)
 
-	call draw_tetromino
+
+	addi a0, zero, 5
+	addi a1, zero, PLACED
+	call set_full_line
+
+
+	#addi a0, zero, 1
+	#addi a1, zero, PLACED
+#	call set_full_line
+
+
+	#addi a0, zero, 5
+	#addi a1, zero, PLACED
+	#call set_full_line
+
+
+
+
+
+
+
+
+	addi a0, zero, 0
+	addi a1, zero, 0
+	addi a2, zero, PLACED
+	call set_gsa
+
+	addi a0, zero, 2
+	addi a1, zero, 2
+	addi a2, zero, PLACED
+	call set_gsa
+
+	addi a0, zero, 1
+	addi a1, zero, 1
+	addi a2, zero, PLACED
+	call set_gsa
+
+	addi a0, zero, 3
+	addi a1, zero, 3
+	addi a2, zero, PLACED
+	call set_gsa
+
+	addi a0, zero, 4
+	addi a1, zero, 4
+	addi a2, zero, PLACED
+	call set_gsa
+
+	addi a0, zero, 5
+	addi a1, zero, 5
+	addi a2, zero, PLACED
+	call set_gsa
+
+
+	addi a0, zero, 6
+	addi a1, zero, 6
+	addi a2, zero, PLACED
+	call set_gsa
 	call draw_gsa
 
 
-	addi a0, zero, NOTHING
-	call draw_tetromino
 
+lines_disappear:
 
-	addi a0, zero, moveD
-	call act
+	call detect_full_line
+	addi s0, s0, 1
+	addi t0, zero, 8
+	beq v0, t0, lll
+	add a0, zero, v0
+	call remove_full_line
+	call draw_gsa
+	addi s1, s1, 1
+	jmpi lines_disappear
 
-
-	addi a0, zero, FALLING
-	call draw_tetromino
-
-	
-
-	call draw_gsa	
+lll :
+	call draw_gsa
 	jmpi end
 ; END:main
 
@@ -620,7 +677,8 @@ get_input:
 		addi t0,zero,5
 		beq t1,t0,get_input_fail
 
-		slli t2,t1,1		#create the mask
+		addi t0,zero,1
+		sll t2,t0,t1		#create the mask
 		and t2,t2,t7		#is bit at 1?
 		
 		addi t1,t1,1		#re-loop it button was not pressed
@@ -634,7 +692,7 @@ get_input_fail:
 
 get_input_end:
 	addi t7,zero,4
-	ldw t7,BUTTONS(t7)
+	stw zero,BUTTONS(t7)
 	ret
 ; END:get_input
 
@@ -664,11 +722,11 @@ detect_full_line:
 			bne s1,t0,detect_full_line_x_loop
 
 		addi t0,zero,PLACED
-		bne s2,t0,detect_full_line_end	#whole line is placed
+		beq s2,t0,detect_full_line_end	#whole line is placed
 
 		addi s0,s0,1
 		addi t0,zero,Y_LIMIT
-		bne s0,t0,detect_full_line_x_loop
+		bne s0,t0,detect_full_line_y_loop
 		
 detect_full_line_end:
 	add v0,zero,s0			#result
@@ -680,6 +738,120 @@ detect_full_line_end:
 	addi sp,sp,16
 	ret
 ; END:detect_full_line
+
+
+; BEGIN:helper
+# input : a0, y-coord of the line to be filled
+# input : a1, value the line should be filled with
+set_full_line:
+
+	addi sp, sp, -16							# stack ra, s0, s1, s2
+	stw ra, 12(sp)
+	stw s0, 8(sp)
+	stw s1, 4(sp)
+	stw s2, 0(sp)
+
+	addi s0, zero, 0							# x-coord (counter)
+	add s1, zero, a0							# y-coord of the line to be filled
+	add s2, zero, a1							# value for the line to be filled with
+	
+	set_full_line_loop:							# iterate over the 12 x coordinates
+		add a0, zero, s0
+		add a1, zero, s1
+		add a2, zero, s2
+		call set_gsa
+
+		addi s0, s0, 1
+		addi t0, zero, X_LIMIT
+		bne s0, t0, set_full_line_loop
+
+	ldw s2, 0(sp)								# destack ra, s0, s1, s2
+	ldw s1, 4(sp)
+	ldw s0, 8(sp)
+	ldw ra, 12(sp)
+	addi sp, sp, 16
+
+	ret
+; END:helper
+
+; BEGIN:remove_full_line
+# input : a0, y-coord of the line to be removed
+remove_full_line:
+	
+	# s0 : y-coord of the line (also y-coord counter)
+	# s1 : x-coord counter
+
+	addi sp, sp, -12							# stack ra, s0, s1
+	stw ra, 8(sp)
+	stw s0, 4(sp)
+	stw s1, 0(sp)
+
+	add s0, zero, a0							# saving y-coord value of the line
+
+	add a0, zero, s0
+	addi a1, zero, NOTHING
+	call set_full_line
+	call draw_gsa
+	call wait
+
+	add a0, zero, s0
+	addi a1, zero, PLACED
+	call set_full_line
+	call draw_gsa
+	call wait
+
+	add a0, zero, s0
+	addi a1, zero, NOTHING
+	call set_full_line
+	call draw_gsa
+	call wait
+
+	add a0, zero, s0
+	addi a1, zero, PLACED
+	call set_full_line
+	call draw_gsa
+	call wait
+
+	add a0, zero, s0
+	addi a1, zero, NOTHING
+	call set_full_line
+	call draw_gsa
+	# wait?
+
+
+	remove_full_line_y_loop:
+		
+		addi s1, zero, 0						# x counter
+		remove_full_line_x_loop:
+
+			add a0, zero, s1
+			addi a1, s0, -1						# get_gsa(a0 = x, a1 = y - 1)
+			call get_gsa						# v0 has the value of the cell ABOVE the one to modify
+
+			add a0, zero, s1
+			add a1, zero, s0
+			add a2, zero, v0
+			call set_gsa						# set the value of the cell to modify to the one above's value
+
+			addi s1, s1, 1
+			addi t0, zero, X_LIMIT
+			bne s1, t0, remove_full_line_x_loop
+
+		addi s0, s0, -1
+		bne s0, zero, remove_full_line_y_loop	# loop over all rows except the very top one (y = 0)
+
+	
+	addi a0, zero, 0
+	addi a1, zero, NOTHING
+	call set_full_line 							# empties top row (y = 0)
+
+	ldw s1, 0(sp)								# destack ra, s0, s1
+	ldw s0, 4(sp)
+	ldw ra, 8(sp)
+	addi sp, sp, 12
+
+	ret
+; END:remove_full_line
 
 
 ; BEGIN:increment_score
@@ -698,13 +870,14 @@ POWERS_OF_TEN:
 	.word 1000
 	.word 100
 	.word 10
+	.word 1
 ; END:helper
 
 ; BEGIN:display_score
 display_score:
 	addi t0,zero,SCORE_LIMIT
 	ldw t7,SCORE(zero)
-	blt t7,t0,display_score_overflow		#if over 9999
+	bge t7,t0,display_score_overflow		#if over 9999
 
 	addi sp,sp,-8
 	stw s0,4(sp)
@@ -757,125 +930,10 @@ display_score_overflow:
 
 
 ; BEGIN:helper
-# input : a0, y-coord of the line to be filled
-# input : a1, value the line should be filled with
-set_full_line:
-
-	addi sp, sp, -16							# stack ra, s0, s1, s2
-	stw ra, 12(sp)
-	stw s0, 8(sp)
-	stw s1, 4(sp)
-	stw s2, 0(sp)
-
-	addi s0, zero, 0							# x-coord (counter)
-	add s1, zero, a0							# y-coord of the line to be filled
-	add s2, zero, a1							# value for the line to be filled with
-	
-	set_full_line_loop:							# iterate over the 12 x coordinates
-
-		add a0, zero, s0
-		add a1, zero, s1
-		add a2, zero, s2
-		call set_gsa
-
-		addi s0, s0, 1
-		addi t0, zero, X_LIMIT
-		bne s0, t0, set_full_line_loop
-
-	ldw s2, 0(sp)								# destack ra, s0, s1, s2
-	ldw s1, 4(sp)
-	ldw s0, 8(sp)
-	ldw ra, 12(sp)
-	addi sp, sp, 16
-
-	ret
-; END:helper
-
-; BEGIN:remove_full_line
-# input : a0, y-coord of the line to be removed
-remove_full_line:
-	
-	# s0 : y-coord of the line (also y-coord counter)
-	# s1 : x-coord counter
-
-	addi sp, sp, -12							# stack ra, s0, s1
-	stw ra, 8(sp)
-	stw s0, 4(sp)
-	stw s1, 0(sp)
-
-	add s0, zero, a0							# saving y-coord value of the line
-
-	add a0, zero, s0
-	addi a1, zero, 0
-	call set_full_line
-	call draw_gsa
-	call wait
-
-	add a0, zero, s0
-	addi a1, zero, 1
-	call set_full_line
-	call draw_gsa
-	call wait
-
-	add a0, zero, s0
-	addi a1, zero, 0
-	call set_full_line
-	call draw_gsa
-	call wait
-
-	add a0, zero, s0
-	addi a1, zero, 1
-	call set_full_line
-	call draw_gsa
-	call wait
-
-	add a0, zero, s0
-	addi a1, zero, 0
-	call set_full_line
-	call draw_gsa
-	# wait?
-
-
-	remove_full_line_y_loop:
-		
-		addi s1, zero, 0						# x counter
-		remove_full_line_x_loop:
-
-			add a0, zero, s1
-			addi a1, s0, -1						# get_gsa(a0 = x, a1 = y - 1)
-			call get_gsa						# v0 has the value of the cell ABOVE the one to modify
-
-			add a0, zero, s1
-			add a1, zero, s2
-			add a2, zero, v0
-			call set_gsa						# set the value of the cell to modify to the one above's value
-
-			addi s1, s1, 1
-			addi t0, zero, X_LIMIT
-			bne s1, t0, remove_full_line_x_loop
-
-		addi s0, s0, -1
-		bne s0, zero, remove_full_line_y_loop	# loop over all rows except the very top one (y = 0)
-
-	
-	addi a0, zero, 0
-	addi a1, zero, 0
-	call set_full_line 							# empties top row (y = 0)
-
-	ldw s1, 0(sp)								# destack ra, s0, s1
-	ldw s0, 4(sp)
-	ldw ra, 8(sp)
-	addi sp, sp, 12
-
-	ret
-; END:remove_full_line
-
-
-; BEGIN:helper
 clear_gsa:
-	addi sp,sp,12			#stack ra,s0,s1
-	stw ra,-8(sp)
-	stw s0,-4(sp)
+	addi sp,sp, -12			#stack ra,s0,s1
+	stw ra,8(sp)
+	stw s0,4(sp)
 	stw s1,0(sp)
 
 	addi s0,zero,0			#put x to 0 
@@ -898,9 +956,9 @@ clear_gsa:
 		blt s0,t6,clear_gsa_x_loop	#iterate over all x
 
 	ldw s1,	0(sp)			#destack
-	ldw s0,-4(sp)
-	ldw ra,-8(sp)
-	addi sp,sp,-12
+	ldw s0,4(sp)
+	ldw ra,8(sp)
+	addi sp,sp,12
 	ret
 ; END:helper
 
