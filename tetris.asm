@@ -130,8 +130,6 @@ main:
 	call wait 				#not sure here
 
 	jmpi outer_loop	
-
-	jmpi end
 ; END:main
 
 ; BEGIN:clear_leds
@@ -868,7 +866,7 @@ display_score:
 		
 		addi s0,s0,1
 		addi t0,zero,4
-		bne s1,t0,display_score_display_loop	#loop over all displays
+		bne s0,t0,display_score_display_loop	#loop over all displays
 
 	ldw s1,0(sp)
 	ldw s0,4(sp)
@@ -927,10 +925,10 @@ clear_gsa:
 ; BEGIN:reset_game
 reset_game:#TODO put score to 0
 
-	addi sp,sp,4			#stack ra
+	addi sp,sp,-4			#stack ra
 	stw ra,0(sp)
 	
-	ldw zero,SCORE(zero)
+	stw zero,SCORE(zero)
 	call display_score
 
 	call clear_gsa
@@ -941,7 +939,7 @@ reset_game:#TODO put score to 0
 	call draw_gsa
 
 	ldw ra,0(sp)
-	addi sp,sp,-4			#stack ra
+	addi sp,sp,4			#stack ra
 	ret
 ; END:reset_game
 
