@@ -65,12 +65,89 @@
 
 
 ; BEGIN:helper
-.equ SP_START,0x2000
+
+POWERS_OF_TEN:
+	.word 1000
+	.word 100
+	.word 10
+	.word 1
+
+towards_center:
+	addi t0,zero,6
+	bge a0,t0,center_negative
+	addi v0,zero,1
+	ret
+center_negative:
+	addi v0,zero,-1
+	ret
+
+# input : a0, y-coord of the line to be filled
+# input : a1, value the line should be filled with
+set_full_line:
+
+	addi sp, sp, -16							# stack ra, s0, s1, s2
+	stw ra, 12(sp)
+	stw s0, 8(sp)
+	stw s1, 4(sp)
+	stw s2, 0(sp)
+
+	addi s0, zero, 0							# x-coord (counter)
+	add s1, zero, a0							# y-coord of the line to be filled
+	add s2, zero, a1							# value for the line to be filled with
+	
+	set_full_line_loop:							# iterate over the 12 x coordinates
+		add a0, zero, s0
+		add a1, zero, s1
+		add a2, zero, s2
+		call set_gsa
+
+		addi s0, s0, 1
+		addi t0, zero, X_LIMIT
+		bne s0, t0, set_full_line_loop
+
+	ldw s2, 0(sp)								# destack ra, s0, s1, s2
+	ldw s1, 4(sp)
+	ldw s0, 8(sp)
+	ldw ra, 12(sp)
+	addi sp, sp, 16
+
+	ret
+
+clear_gsa:
+	addi sp,sp, -12			#stack ra,s0,s1
+	stw ra,8(sp)
+	stw s0,4(sp)
+	stw s1,0(sp)
+
+	addi s0,zero,0			#put x to 0 
+
+	clear_gsa_x_loop:
+
+		addi s1,zero,0		#put y to 0 	
+		clear_gsa_y_loop:
+			add a0,zero,s0		#all gsa is NOTHING
+			add a1,zero,s1
+			addi a2,zero,NOTHING
+			call set_gsa
+
+			addi t7,zero,Y_LIMIT
+			addi s1,s1,1
+			blt s1,t7,clear_gsa_y_loop	#iterate over all y
+
+		addi t6,zero,X_LIMIT
+		addi s0,s0,1
+		blt s0,t6,clear_gsa_x_loop	#iterate over all x
+
+	ldw s1,	0(sp)			#destack
+	ldw s0,4(sp)
+	ldw ra,8(sp)
+	addi sp,sp,12
+	ret
 ; END:helper
 
 ; BEGIN:main
 main:
-	addi sp,zero,SP_START		#NOT SURE HOW TO DO THIS
+	addi sp,zero,0x2000		#NOT SURE HOW TO DO THIS
 	call reset_game			#beggining of the game
 	outer_loop:
 		addi s0,zero,0
@@ -482,17 +559,6 @@ rotate_start:
 ; END:rotate_tetromino
 
 
-; BEGIN:helper
-towards_center:
-	addi t0,zero,6
-	bge a0,t0,center_negative
-	addi v0,zero,1
-	ret
-center_negative:
-	addi v0,zero,-1
-	ret
-; END:helper
-
 ; BEGIN:act
 act:
 	addi sp,sp,-8			#stack ra,s0,s1
@@ -699,39 +765,7 @@ detect_full_line_end:
 ; END:detect_full_line
 
 
-; BEGIN:helper
-# input : a0, y-coord of the line to be filled
-# input : a1, value the line should be filled with
-set_full_line:
 
-	addi sp, sp, -16							# stack ra, s0, s1, s2
-	stw ra, 12(sp)
-	stw s0, 8(sp)
-	stw s1, 4(sp)
-	stw s2, 0(sp)
-
-	addi s0, zero, 0							# x-coord (counter)
-	add s1, zero, a0							# y-coord of the line to be filled
-	add s2, zero, a1							# value for the line to be filled with
-	
-	set_full_line_loop:							# iterate over the 12 x coordinates
-		add a0, zero, s0
-		add a1, zero, s1
-		add a2, zero, s2
-		call set_gsa
-
-		addi s0, s0, 1
-		addi t0, zero, X_LIMIT
-		bne s0, t0, set_full_line_loop
-
-	ldw s2, 0(sp)								# destack ra, s0, s1, s2
-	ldw s1, 4(sp)
-	ldw s0, 8(sp)
-	ldw ra, 12(sp)
-	addi sp, sp, 16
-
-	ret
-; END:helper
 
 ; BEGIN:remove_full_line
 # input : a0, y-coord of the line to be removed
@@ -822,19 +856,10 @@ increment_score:
 ; END:increment_score
 
 
-; BEGIN:helper
-	.equ SCORE_LIMIT,10000
-
-POWERS_OF_TEN:
-	.word 1000
-	.word 100
-	.word 10
-	.word 1
-; END:helper
 
 ; BEGIN:display_score
 display_score:
-	addi t0,zero,SCORE_LIMIT
+	addi t0,zero,10000					#max_scoce
 	ldw t7,SCORE(zero)
 	bge t7,t0,display_score_overflow		#if over 9999
 
@@ -888,38 +913,7 @@ display_score_overflow:
 ; END:display_score
 
 
-; BEGIN:helper
-clear_gsa:
-	addi sp,sp, -12			#stack ra,s0,s1
-	stw ra,8(sp)
-	stw s0,4(sp)
-	stw s1,0(sp)
 
-	addi s0,zero,0			#put x to 0 
-
-	clear_gsa_x_loop:
-
-		addi s1,zero,0		#put y to 0 	
-		clear_gsa_y_loop:
-			add a0,zero,s0		#all gsa is NOTHING
-			add a1,zero,s1
-			addi a2,zero,NOTHING
-			call set_gsa
-
-			addi t7,zero,Y_LIMIT
-			addi s1,s1,1
-			blt s1,t7,clear_gsa_y_loop	#iterate over all y
-
-		addi t6,zero,X_LIMIT
-		addi s0,s0,1
-		blt s0,t6,clear_gsa_x_loop	#iterate over all x
-
-	ldw s1,	0(sp)			#destack
-	ldw s0,4(sp)
-	ldw ra,8(sp)
-	addi sp,sp,12
-	ret
-; END:helper
 
 
 ; BEGIN:reset_game
