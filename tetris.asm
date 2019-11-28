@@ -64,6 +64,71 @@
 .equ Y_LIMIT, 8
 
 
+; BEGIN:main
+
+main:
+	addi sp,zero,0x2000		#NOT SURE HOW TO DO THIS
+	call reset_game			#beggining of the game
+	outer_loop:
+		addi s0,zero,0
+		inner_loop:			#run for RATE iterations where you can act
+			call draw_gsa		#draw the gsa
+			call display_score
+
+			addi a0, zero, NOTHING		#erase the tetromino
+			call draw_tetromino
+			call wait
+			call get_input		#get the input
+			beq v0,zero,no_input
+				add a0,zero,v0
+				call act		#act if input
+
+			no_input:
+			addi a0, zero, FALLING		#redraw the tetromino
+
+			call draw_tetromino
+			addi s0,s0,1
+			addi t0,zero,RATE
+			bne s0,t0,inner_loop
+
+		addi a0, zero, NOTHING		#erase the tetromino
+	 	call draw_tetromino
+		addi a0,zero,moveD			#move down
+		call act
+		add s6,zero,v0
+		addi a0, zero, FALLING		#redraw the tetromino
+	 	call draw_tetromino
+
+		beq s6,zero,outer_loop		#if we still moved down jump back
+
+	addi a0, zero, PLACED			#place the tetromino
+	call draw_tetromino
+
+	lines_disapear:				#handles the full lines
+		call detect_full_line
+		addi t0,zero,8
+		beq v0,t0,end_lines_disapear
+		call increment_score
+
+
+		add a0,zero,v0
+		call remove_full_line
+		call draw_gsa
+		jmpi lines_disapear
+	end_lines_disapear:
+
+	call generate_tetromino		#generate new tetromino
+	addi a0,zero,OVERLAP
+	call detect_collision
+	addi t0,zero,OVERLAP
+	beq v0,t0,main			#si overlap
+	addi a0, zero, FALLING
+ 	call draw_tetromino
+	call wait 				#not sure here
+
+	jmpi outer_loop	
+; END:main
+
 ; BEGIN:helper
 
 POWERS_OF_TEN:
@@ -144,70 +209,6 @@ clear_gsa:
 	addi sp,sp,12
 	ret
 ; END:helper
-
-; BEGIN:main
-main:
-	addi sp,zero,0x2000		#NOT SURE HOW TO DO THIS
-	call reset_game			#beggining of the game
-	outer_loop:
-		addi s0,zero,0
-		inner_loop:			#run for RATE iterations where you can act
-			call draw_gsa		#draw the gsa
-			call display_score
-
-			addi a0, zero, NOTHING		#erase the tetromino
-			call draw_tetromino
-			call wait
-			call get_input		#get the input
-			beq v0,zero,no_input
-				add a0,zero,v0
-				call act		#act if input
-
-			no_input:
-			addi a0, zero, FALLING		#redraw the tetromino
-
-			call draw_tetromino
-			addi s0,s0,1
-			addi t0,zero,RATE
-			bne s0,t0,inner_loop
-
-		addi a0, zero, NOTHING		#erase the tetromino
-	 	call draw_tetromino
-		addi a0,zero,moveD			#move down
-		call act
-		add s6,zero,v0
-		addi a0, zero, FALLING		#redraw the tetromino
-	 	call draw_tetromino
-
-		beq s6,zero,outer_loop		#if we still moved down jump back
-
-	addi a0, zero, PLACED			#place the tetromino
-	call draw_tetromino
-
-	lines_disapear:				#handles the full lines
-		call detect_full_line
-		addi t0,zero,8
-		beq v0,t0,end_lines_disapear
-		call increment_score
-
-
-		add a0,zero,v0
-		call remove_full_line
-		call draw_gsa
-		jmpi lines_disapear
-	end_lines_disapear:
-
-	call generate_tetromino		#generate new tetromino
-	addi a0,zero,OVERLAP
-	call detect_collision
-	addi t0,zero,OVERLAP
-	beq v0,t0,main			#si overlap
-	addi a0, zero, FALLING
- 	call draw_tetromino
-	call wait 				#not sure here
-
-	jmpi outer_loop	
-; END:main
 
 ; BEGIN:clear_leds
 clear_leds:					#Mets tout les leds a 0
@@ -636,6 +637,9 @@ act:
 		add a0,zero,s0
 		call rotate_tetromino
 		
+
+		call towards_center
+		add s0,zero,v0
 		addi s1,zero,0			#act_rot_loop counter
 	
 		addi a0,zero,OVERLAP
@@ -655,9 +659,9 @@ act:
 			beq s1,t0,act_rot_end_fail
 
 			ldw a0,T_X(zero)
-			call towards_center
+			
 			ldw t0,T_X(zero)
-			add t0,v0,t0
+			add t0,s0,t0
 			stw t0,T_X(zero)	
 	
 			addi a0,zero,OVERLAP
